@@ -40,8 +40,8 @@ class DSLTransformer(Transformer):
         intents = [s for s in stmts]    #语句都是IntentDef
         return Program(intents=intents)
     
-    def intent_def(self, _kw, name, _lbrace, *rules):   #INTENT NAME { rule+ }
-        rules_list = list(rules)    #转为列表
+    def intent_def(self, _kw, name, _lbrace, *rules):
+        rules_list = list(rules)
         return IntentDef(name=str(name),rules=rules_list)
     
     def rule(self, _when, cond, _them, act, _semi): #when condition then action；
@@ -67,7 +67,7 @@ class DSLTransformer(Transformer):
         #【“goto”， NAME】
         if len(args) == 2 and str(args[0]) == "reply":
             return Action(kind="reply", key="", value=args[1][1:-1])
-        if len(args) == 4 and str(args[0]) == "set" and str(args[2] == "="):
+        if len(args) == 4 and str(args[0]) == "set" and str(args[2]) == "=":
             return Action(kind="set", key=str(args[1]), value=args[3][1:-1])
         if len(args) == 2 and str(args[0]) == "goto":
             return Action(kind="goto", key="", value=str(args[1]))

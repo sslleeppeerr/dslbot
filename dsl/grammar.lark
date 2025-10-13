@@ -1,26 +1,30 @@
-//Lark EBNF
-//顶层由多个语句组成：若干意图定义
+// Lark EBNF
+// 顶层由多个语句组成：若干意图定义
 start: statement+
 
-//语句目前只有一种：意图定义
+// 语句目前只有一种：意图定义
 statement: intent_def
 
-//意图定义：关键字INTENT，跟一个名称，然后一个大括号内的规则块
+// 意图定义：关键字 INTENT，跟一个名称，然后一个大括号内的规则块
 intent_def: "INTENT" NAME "{" rule+ "}"
 
-//规则：when条件then动作以分号结束
+// 规则：when 条件 then 动作，以分号结束
 rule: "when" condition "then" action ";"
 
-//条件可以是三类：匹配意图、匹配包含关键词、总是为真
-condition: "intent" "==" NAME | "set" NAME "=" STRING | "always"
+// 条件可以是三类：匹配意图、匹配包含关键词、总是为真
+condition: "intent" "==" NAME
+         | "contains" STRING
+         | "always"
 
-//动作：三类动作，reply回复文本；set设置变量；goto跳转到另一个意图
-action: "reply" STRING | "set" NAME "=" STRING | "goto" NAME
+// 动作：三类动作，reply 回复文本；set 设置变量；goto 跳转到另一个意图
+action: "reply" STRING
+      | "set" NAME "=" STRING
+      | "goto" NAME
 
-//词法
-%import common.CNAME -> NAME    //名称
-%import common.ESCAPE_STRING -> STRING  //字符串，支持专一如\" \n
+// 词法
+%import common.CNAME            -> NAME           // 名称
+%import common.ESCAPED_STRING   -> STRING         // 字符串，支持转义如 \" \n
 %import common.WS
 %ignore WS
-%ignore /\/\/[^\n]*/    //行注释 //...
-ignore /\/\*[^*]*\*+([^/*][^*]*\*+)*\//   //块注释 //  /*...*/
+%ignore /\/\/[^\n]*/                              // 行注释 // ...
+%ignore /\/\*[^*]*\*+([^/*][^*]*\*+)*\//         // 块注释 /* ... */
