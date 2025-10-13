@@ -9,7 +9,7 @@ from runtime.state import ConversationState #导入会话状态
 def render_template(text: str, vars: Dict[str, str]) -> str:
     """非严格模版替代，把{key}替换为vars【key】。这是简化实现，避免引入jinja2以减少依赖"""
     #逐个变量替换
-    for k, v in vars.item():
+    for k, v in vars.items():
         text = text.replace("{" + k + "}", str(v))
     return text
 
