@@ -1,0 +1,17 @@
+# 使用 PEP 621 声明
+[project]
+name = "dslbot"
+version = "0.1.0"
+description = "A DSL-driven chatbot interpreter with LLM intent routing"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "lark",
+    "typer",
+    "pydantic",
+    "requests",
+    "rich",
+]
+
+[project.scripts]
+dslbot = "cli.main:app"  # 安装为包后，可用 dslbot 命令启动（本作业可直接 python -m 运行）

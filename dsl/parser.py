@@ -1,7 +1,7 @@
 #-*- coding: utf-8 -*-
 #文件位置：dsl/parser.py
 #作用：加载Lark语法，解析DSL文本为抽象语法树（AST）并做最小结构化转换
-from__future__ import annotations   #未来注解特性，允许向前引用
+from __future__ import annotations   #未来注解特性，允许向前引用
 from dataclasses import dataclass   #用于简介定义数据类
 from typing import List, Union  #类型提示
 from lark import Lark, Transformer, v_args  #Lark解析器工具
@@ -83,7 +83,7 @@ def load_parser() -> Lark:
     return Lark(grammar, start="start", parser="lalr")
 
 #对外的解析函数：输入DLS文本，返回Program数据结构
-def parse_program(text: str) -> Program
+def parse_program(text: str) -> Program:
     #获取解析器
     parser = load_parser()
     #解析得到的解析树
@@ -92,4 +92,3 @@ def parse_program(text: str) -> Program
     program = DSLTransformer().transform(tree)
     #返回Program对象
     return program
-
