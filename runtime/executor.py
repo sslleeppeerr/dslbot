@@ -1,29 +1,23 @@
-#-*- coding: utf-8 -*-
-#文件位置: runtime/executor.py
-#解释器执行引擎；根据Program（AST）与当前会话状态，匹配规则并执行动作
+# -*- coding: utf-8 -*-
+# 文件：runtime/executor.py
+# 作用：解释器执行引擎（两阶段执行：先副作用，再回复）
 
-from __future__ import annotations  #未来注解
-from typing import Optional, List   #类型提示
-from dsl.parser import Program, IntentDef, Rule, Condition, Action  #AST类型
-from runtime.state import ConversationState #会话状态
-from runtime.actions import do_reply, do_set, do_goto   #动作实现
+from __future__ import annotations
+from typing import Optional, List
+from dsl.parser import Program, IntentDef, Rule, Condition, Action
+from runtime.state import ConversationState
+from runtime.actions import do_reply, do_set, do_goto
 
 class Interpreter:
-    """解释器：持有一个Program（DSL AST），并提供step（）方法来给定用户输入与意图，执行一次规则匹配与动作"""
-    
+    """持有一个 Program（DSL AST），提供 step() 执行一轮对话。"""
+
     def __init__(self, program: Program) -> None:
-        #保存AST
         self.program = program
-        #建立意图索引，便于快速按名称查意图
+        # 建立意图索引，O(1) 获取 IntentDef
         self.intent_map = {i.name: i for i in program.intents}
 
-    def _match_condition(self, cond: Condition, user_text: str, current_intent: str) ->bool:
-        """
-        内部方法：判断单个条件是否满足。
-        - intent==NAME：当前意图名等于NAME
-        - contents “xxx”：用户输入包含子串xxx（大小写不变，简化处理）
-        - always：恒为真
-        """
+    def _match_condition(self, cond: Condition, user_text: str, current_intent: str) -> bool:
+        """判断单个条件是否满足。"""
         if cond.kind == "intent":
             return current_intent == cond.value
         if cond.kind == "contains":
@@ -31,43 +25,52 @@ class Interpreter:
         if cond.kind == "always":
             return True
         return False
-    
-    def _run_action(self, action: Action, state: ConversationState) -> Optional[str]:
-       """
-       内部方法：执行动作，返回可输出的回复文本（仅reply有输出）
-       - reply“...”：渲染后返回文本
-       - set k="v"：写入状态，不返回
-       - goto NAME：更改当前意图，不返回
-       """
-       if action.kind == "reply":
-           return do_reply(state, action.value)
-       if action.kind == "set":
-           do_set(state, action.key, action.value)
-           return None
-       if action.kind == "goto":
-           do_goto(state, action.value)
-           return None
-       raise ValueError(f"未知动作：{action.kind}")
-    
-    def step(self, state: ConversationState, user_text: str) -> Optional[str]:
-        """
-        对话执行第一步：
-        1）根据state.current_intent找出意图定义
-        2）遍历其规则，找到第一个条件匹配的rule
-        3）执行动作，可能改变当前意图或返回回复
-        """
 
-        intent : Optional[IntentDef] = self.intent_map.get(state.current_intent)
-        #若当前意图不存在于程序中，直接返回提示
+    def _run_action_effect(self, action: Action, state: ConversationState) -> None:
+        """
+        执行“无输出动作”的副作用（set/goto）。
+        设计：在阶段一里仅做副作用，不返回字符串。
+        """
+        if action.kind == "set":
+            do_set(state, action.key, action.value)
+        elif action.kind == "goto":
+            do_goto(state, action.value)
+        # reply 不在这里执行
+
+    def _run_action_reply(self, action: Action, state: ConversationState) -> Optional[str]:
+        """
+        执行“输出动作”（reply）。
+        设计：阶段二里只要遇到第一条 reply 就返回本轮输出。
+        """
+        if action.kind == "reply":
+            return do_reply(state, action.value)
+        return None
+
+    def step(self, state: ConversationState, user_text: str) -> str:
+        """
+        两阶段执行：
+          阶段一：遍历所有匹配规则，先执行 set/goto 等“无输出副作用”，准备状态；
+          阶段二：再次遍历匹配规则，命中第一条 reply 就返回；
+          若没有任何 reply，则返回上次的 last_reply 或兜底提示。
+        """
+        # 获取当前意图
+        intent: Optional[IntentDef] = self.intent_map.get(state.current_intent)
         if not intent:
             return "对不起，当前意图未定义。"
-        
-        #遍历规则，匹配条件
+
+        # —— 阶段一：只做副作用（set/goto），允许多条规则叠加状态 ——
         for rule in intent.rules:
             if self._match_condition(rule.condition, user_text, state.current_intent):
+                # 仅在副作用阶段处理 set/goto
+                self._run_action_effect(rule.action, state)
 
-                result = self._run_action(rule.action, state)
-                return result
-        #未匹配到任何规则    
-        return "抱歉，我不太明白你的意思。"
+        # —— 阶段二：找到第一条匹配的 reply 并返回 ——
+        for rule in intent.rules:
+            if self._match_condition(rule.condition, user_text, state.current_intent):
+                out = self._run_action_reply(rule.action, state)
+                if out is not None:               # 第一条 reply 就返回
+                    return out
 
+        # 若本轮没有新回复，但历史上有 last_reply，则返回它（轻度容错）
+        if state.last_reply:
+            return state.last_reply
