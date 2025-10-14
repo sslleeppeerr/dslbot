@@ -14,4 +14,4 @@ dependencies = [
 ]
 
 [project.scripts]
-dslbot = "cli.main:app"  # 安装为包后，可用 dslbot 命令启动（本作业可直接 python -m 运行）
+dslbot = "appcli.main:app"  # 安装为包后，可用 dslbot 命令启动（本作业可直接 python -m 运行）
