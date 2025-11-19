@@ -7,7 +7,7 @@ from typing import Dict
 from runtime.state import ConversationState
 
 def render_template(text: str, vars: Dict[str, str]) -> str:
-    """非常简化的模板替换：把 {key} 替换为 vars[key]（若无则不替换）。"""
+    """模板替换：把 {key} 替换为 vars[key]（若无则不替换）。"""
     for k, v in vars.items():                       # 遍历状态变量
         text = text.replace("{" + k + "}", str(v))  # 逐个替换
     return text
